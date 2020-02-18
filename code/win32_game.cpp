@@ -5,11 +5,21 @@
 #define global_variable static 
 
 global_variable bool running;
+global_variable BITMAPINFO BitmapInfo;
+global_variable void *BitmapMemory;
 
 internal void
 Win32ResizeDIBSection(int width, int height) 
 {
-    CreateDIBSection();
+    BitmapInfo.bmiHeader.biSizeImage = sizeof(BITMAPINFOHEADER); 
+    BitmapInfo.bmiHeader.biWidth = width;
+    BitmapInfo.bmiHeader.biHeight = height;
+    BitmapInfo.bmiHeader.biPlanes = 1;
+    BitmapInfo.bmiHeader.biBitCount = 32;
+    BitmapInfo.bmiHeader.biCompression = BI_RGB;
+
+    int bitmapMemorySize = 4 * width * height;
+    BitmapMemory = VirtualAlloc(0, bitmapMemorySize, MEM_COMMIT, PAGE_READWRITE);
 }
 
 internal void 
@@ -17,7 +27,11 @@ Win32UpdateWindow(HDC dc, int x, int y, int width, int height )
 {
     StretchDIBits(dc, 
         x, y, width, height,
-        x, y, width, height);
+        x, y, width, height, 
+        BitmapMemory, 
+        &BitmapInfo, 
+        DIB_RGB_COLORS,
+        SRCCOPY);
 }
 
 LRESULT CALLBACK
@@ -62,7 +76,7 @@ Win32MainWindowCallback(HWND window,
             int height = paint.rcPaint.bottom - paint.rcPaint.top;
             int width = paint.rcPaint.right - paint.rcPaint.left;
 
-            Win32UpdateWindow(window, paint.rcPaint.left, paint.rcPaint.top, width, height);
+            Win32UpdateWindow(deviceContext, paint.rcPaint.left, paint.rcPaint.top, width, height);
 
             EndPaint(window, &paint);
 
