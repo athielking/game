@@ -1,7 +1,27 @@
 #include <windows.h>
 
+#define internal static 
+#define local_persist static 
+#define global_variable static 
+
+global_variable bool running;
+
+internal void
+Win32ResizeDIBSection(int width, int height) 
+{
+    CreateDIBSection();
+}
+
+internal void 
+Win32UpdateWindow(HDC dc, int x, int y, int width, int height )
+{
+    StretchDIBits(dc, 
+        x, y, width, height,
+        x, y, width, height);
+}
+
 LRESULT CALLBACK
-MainWindowCallback(HWND window,
+Win32MainWindowCallback(HWND window,
                    UINT message,
                    WPARAM wParam,
                    LPARAM lParam)
@@ -11,17 +31,23 @@ MainWindowCallback(HWND window,
     {
         case WM_SIZE:
         {
+            RECT clientRect;
+            GetClientRect(window, &clientRect);
+            int height = clientRect.bottom - clientRect.top;
+            int width = clientRect.right - clientRect.left;
+
+            Win32ResizeDIBSection(width, height);
             OutputDebugStringA("WM_SIZE\n");
             break;
         }
         case WM_DESTROY:
         {
-            OutputDebugStringA("WM_DESTROY\n");
+            running = false;
             break;
         }
         case WM_CLOSE:
         {
-            OutputDebugStringA("WM_CLOSE\n");
+            running = false;
             break;
         }
         case WM_ACTIVATEAPP:
@@ -36,7 +62,7 @@ MainWindowCallback(HWND window,
             int height = paint.rcPaint.bottom - paint.rcPaint.top;
             int width = paint.rcPaint.right - paint.rcPaint.left;
 
-            PatBlt(deviceContext, paint.rcPaint.left, paint.rcPaint.top, width, height, WHITENESS);
+            Win32UpdateWindow(window, paint.rcPaint.left, paint.rcPaint.top, width, height);
 
             EndPaint(window, &paint);
 
@@ -59,7 +85,7 @@ WinMain(HINSTANCE instance,
 {
     WNDCLASS WindowClass = {};
     WindowClass.style = CS_OWNDC|CS_HREDRAW|CS_VREDRAW;
-    WindowClass.lpfnWndProc = MainWindowCallback;
+    WindowClass.lpfnWndProc = Win32MainWindowCallback;
     WindowClass.hInstance = instance;
     WindowClass.lpszClassName = "GameWindowClass";
 
@@ -83,7 +109,8 @@ WinMain(HINSTANCE instance,
         if(windowHandle) 
         {
             MSG message;
-            for(;;)
+            running = true;
+            while(running)
             {
 
                 BOOL messageResult = GetMessage(&message, 0, 0, 0);
